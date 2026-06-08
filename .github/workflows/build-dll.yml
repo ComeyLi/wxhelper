@@ -18,10 +18,14 @@ jobs:
           submodules: recursive
 
       - name: 安装 vcpkg 依赖 (nlohmann-json, detours)
-        # 不锁定 vcpkg commit：之前固定的版本里 nlohmann-json portfile
-        # 依赖的 msys2 pkgconf 包在所有镜像上都已 404，用最新 vcpkg 的
-        # port 脚本（版本号更新过、镜像可用）来规避这个问题。
+        # 之前固定的 vcpkg commit 里，nlohmann-json portfile 依赖的
+        # msys2 pkgconf 包在所有镜像上都已 404（版本太旧被下架）。
+        # run-vcpkg 要求显式指定 baseline commit（经典模式没有 vcpkg.json），
+        # 这里用 vcpkg master 上较新的 commit，其 port 脚本里的包版本号
+        # 已更新、镜像仍可下载。
         uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: "75672db6bd812b060482b0f00b5a16b18a0c0f07"
 
       - name: 安装编译所需的 vcpkg 包
         # lukka/run-vcpkg 默认会尝试用 GitHub Actions 缓存做二进制缓存源，
