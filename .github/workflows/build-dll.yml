@@ -17,6 +17,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: 配置 MSVC 开发环境 (cl.exe / ml64.exe / link.exe 等加入 PATH)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: 安装 vcpkg 依赖 (nlohmann-json, detours)
         # 之前固定的 vcpkg commit 里，nlohmann-json portfile 依赖的
         # msys2 pkgconf 包在所有镜像上都已 404（版本太旧被下架）。
@@ -35,20 +40,25 @@ jobs:
         env:
           VCPKG_BINARY_SOURCES: clear
 
-      - name: Configure (CMake + Visual Studio 2022 / x64)
-        # CMakeLists.txt 里设置的 CMAKE_CXX_STANDARD 17 在 VS 生成器下没有
-        # 透传成 /std:c++17（global_context.h 用了 std::optional 编译报错
-        # "is not a member of std"），这里直接在 CXX_FLAGS 里显式加上。
+      - name: Configure (CMake + Ninja，在 MSVC 开发者环境下直接调用 cl.exe)
+        # 之前用 "Visual Studio 17 2022" 生成器时，CMakeLists.txt 里的
+        # CMAKE_CXX_STANDARD 17（以及命令行传入的 CMAKE_CXX_FLAGS）都没有
+        # 正确透传成 cl.exe 的 /std:c++17，导致 <optional> 报错。
+        # 换成 Ninja 生成器后 CMake 会直接拼出 cl.exe 命令行，标准选项
+        # 能正确生效，绕开 MSBuild 那层属性映射的问题。
+        shell: cmd
         run: >
-          cmake -S . -B build
-          -G "Visual Studio 17 2022" -A x64
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_STANDARD=17
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON
           -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
           -DVCPKG_TARGET_TRIPLET=x64-windows
           -DVCPKG_MANIFEST_MODE=OFF
-          -DCMAKE_CXX_FLAGS="/std:c++17 /EHsc"
 
       - name: Build (Release)
-        run: cmake --build build --config Release --target wxhelper
+        shell: cmd
+        run: cmake --build build --target wxhelper
 
       - name: 上传产物 wxhelper.dll
         uses: actions/upload-artifact@v4
