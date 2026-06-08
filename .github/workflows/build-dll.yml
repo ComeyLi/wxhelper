@@ -23,7 +23,12 @@ jobs:
           vcpkgGitCommitId: "1de2026f28ead93ff1773e6e680387643e914ea1"
 
       - name: 安装编译所需的 vcpkg 包
+        # lukka/run-vcpkg 默认会尝试用 GitHub Actions 缓存做二进制缓存源，
+        # 但缺少 ACTIONS_RUNTIME_TOKEN/ACTIONS_CACHE_URL 会直接报错退出。
+        # 这里关掉二进制缓存（clear），只走普通编译安装即可。
         run: ${{ env.VCPKG_ROOT }}/vcpkg.exe install nlohmann-json:x64-windows detours:x64-windows
+        env:
+          VCPKG_BINARY_SOURCES: clear
 
       - name: Configure (CMake + Visual Studio 2022 / x64)
         run: >
